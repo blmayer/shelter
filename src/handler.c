@@ -15,15 +15,10 @@ int handle_request(int cli_conn) {
 	}
 	printf("read %lu bytes\n", n);
 
-	char op = data[0] >> 4;
-	char len_size = data[0] & 15;
-	unsigned int len = 0;
-	for (int i = 0; i < len_size; i++) {
-		len += data[i + 1] << (8 * i);
-	}
+	char op = getop(data);
+	size_t len = getlen(data);
 	printf("operation: %u\n", op);
-	printf("len size: %u\n", len_size);
-	printf("len: %u\n", len);
+	printf("len: %li\ndata: ", len);
 
 	for (size_t i = 0; i < n; i++) {
 		printf("%u ", data[i]);
@@ -33,7 +28,10 @@ int handle_request(int cli_conn) {
 	int ret;
 	switch (op) {
 	case get:
-		ret = send_key(cli_conn, &data[1 + len_size], len);
+		ret = send_key(cli_conn, data);
+		break;
+	case put:
+		ret = put_key(cli_conn, data);
 	}
 	printf("operation returned %d\n", ret);
 

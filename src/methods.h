@@ -7,6 +7,22 @@
 #ifndef METHODS_H
 #define METHODS_H
 
-int send_key(int conn, unsigned char *rec, unsigned int len);
+#include <stddef.h>
+
+int send_key(int conn, unsigned char *rec);
+
+int put_key(int conn, unsigned char *rec);
+
+char getop(unsigned char *rec);
+
+size_t getlensize(unsigned char *rec);
+
+size_t datalen(unsigned char *rec);
+
+size_t getlen(unsigned char *rec);
+
+unsigned char *next(unsigned char *rec);
+
+unsigned char *data(unsigned char *rec);
 
 #endif
