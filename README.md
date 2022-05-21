@@ -19,13 +19,14 @@ Simply run:
 ## Running
 
 There must be a folder named `data` in the same directory as db.
-The server will listen on port 8080
-if no *PORT* env variable is present. 
+The server will listen on port 8080 if no *PORT* env variable is present.
 
 
 # Meta
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+See the design draft: [draft](DESIGN.md)
 
 
 ## Contributing
