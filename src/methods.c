@@ -1,102 +1,65 @@
-#include "methods.h"
-#include "defs.h"
-#include <fcntl.h>
-#include <stddef.h>
 #include <stdio.h>
+#include <stddef.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/sendfile.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "map.h"
+#include "defs.h"
+#include "record.h"
 
-int send_key(int conn, unsigned char *rec) {
-	size_t len = datalen(rec);
-	rec = data(rec);
-	struct stat st;
+extern map addrs;
+extern char debug;
 
-	char *path = malloc(strlen(DATA_DIR) + len + 1);
-	strcpy(path, DATA_DIR);
-	memcpy(path + strlen(DATA_DIR), rec, len);
-	path[strlen(DATA_DIR) + len] = 0;
-
-	printf("reading file %s\n", path);
-	stat(path, &st);
-	int page_file = open(path, O_RDONLY);
-	free(path);
-	if (page_file < 0) {
-		return -1;
-	}
-
-	printf("file size %li bytes\n", st.st_size);
-
-	int sent = sendfile(conn, page_file, 0, st.st_size);
-	printf("sent %d bytes\n", sent);
-
-	return 0;
+unsigned char *fetchkey(unsigned char *key) {
+	return get(&addrs, key);
 }
 
-int put_key(int conn, unsigned char *rec) {
-	rec = data(rec);
-	size_t key_len = datalen(rec);
+int putkey(unsigned char *rec) {
+	unsigned char *key_rec = data(rec);
+	unsigned char *key = malloc(datalen(key_rec) + 1);
+	unsigned char *key_data = data(key_rec);
+	memcpy(key, key_data, datalen(key_rec));
+	key[datalen(key_rec)] = 0;
 
-	unsigned char *key = rec;
-	key = data(key);
+	int ret = add(&addrs, key, rec);
+	free(key);
+	return ret;
+}
 
-	char *path = malloc(strlen(DATA_DIR) + key_len + 1);
-	strcpy(path, DATA_DIR);
-	memcpy(path + strlen(DATA_DIR), key, key_len);
-	path[strlen(DATA_DIR) + key_len] = 0;
-
-	printf("writing file %s\n", path);
-	int page_file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
-	free(path);
-	if (page_file < 0) {
+int linkobjs(char* from, char *field, char *to) {
+	unsigned char *from_obj = fetchkey(from);
+	if (!from_obj) {
 		return -1;
 	}
 
-	rec = next(rec);
-	size_t obj_len = getlen(rec);
-
-	printf("writing data\n");
-	for (size_t i = 0; i < obj_len; i++) {
-		printf("%d ", rec[i]);
-	}
-	puts("");
-
-	size_t sent = write(page_file, rec, obj_len);
-	if (sent != obj_len) {
+	unsigned char *to_obj = fetchkey(to);
+	if (!to_obj) {
 		return -2;
 	}
 
-	return 0;
-}
-
-char getop(unsigned char *rec) {
-	return rec[0] >> 4;
-}
-
-size_t getlensize(unsigned char *rec) {
-	return rec[0] & 15;
-}
-
-size_t datalen(unsigned char *rec) {
-	size_t len_size = getlensize(rec);
-	size_t len = 0;
-	for (size_t i = 0; i < len_size; i++) {
-		len += rec[i + 1] << (8 * i);
+	unsigned char *new = addlink(from_obj, field, to_obj);
+	if (!new) {
+		return -3;
 	}
-	return len;
+	free(from_obj);
+	return putkey(new);
 }
 
-size_t getlen(unsigned char *rec) {
-	return 1 + datalen(rec) + getlensize(rec);
+int dump(unsigned char *rec) {
+	char *path = malloc(strlen(DATA_DIR) + keylen(rec) + 1);
+	strcpy(path, DATA_DIR);
+	strcat(path, rec);
+
+	printf("writing file %s\n", path);
+	int file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+	free(path);
+	if (file < 0) {
+		return -1;
+	}
+
+	write(file, rec, reclen(rec));
+	return !close(file);
 }
 
-unsigned char *next(unsigned char *rec) {
-	return &rec[getlen(rec)];
-}
-
-unsigned char *data(unsigned char *rec) {
-	return &rec[1 + getlensize(rec)];
-}

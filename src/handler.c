@@ -1,5 +1,6 @@
 #include "defs.h"
 #include "methods.h"
+#include "record.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,7 +17,7 @@ int handle_request(int cli_conn) {
 	printf("read %lu bytes\n", n);
 
 	char op = getop(data);
-	size_t len = getlen(data);
+	size_t len = reclen(data[1]);
 	printf("operation: %u\n", op);
 	printf("len: %li\ndata: ", len);
 
@@ -25,15 +26,20 @@ int handle_request(int cli_conn) {
 	}
 	puts("");
 
-	int ret;
+	unsigned char *ret;
 	switch (op) {
-	case get:
-		ret = send_key(cli_conn, data);
+	case op_get:
+		ret = fetchkey(&data+1);
 		break;
-	case put:
-		ret = put_key(cli_conn, data);
+	case op_put:
+		ret = putkey(&data+1);
 	}
-	printf("operation returned %d\n", ret);
+	printf("operation returned %p\n", ret);
 
-	return 0;
+	if (!ret) {
+		write(cli_conn, 0, 1);
+		return 0;
+	}
+
+	return write(cli_conn, ret, reclen(ret));
 }

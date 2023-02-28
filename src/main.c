@@ -1,6 +1,8 @@
+#include "defs.h"
 #include "handler.h"
 #include <arpa/inet.h>
 #include <signal.h>
+#include <libmap.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -9,6 +11,9 @@
 
 int server;
 
+map addrs;
+char debug;
+
 void sig_handler() {
 	puts("closing server");
 	close(server);
@@ -16,6 +21,14 @@ void sig_handler() {
 }
 
 int main(void) {
+	if (getenv("DEBUG")) {
+		debug = 1;
+	}
+
+	if (!init(&addrs)) {
+		puts("map init error");
+		return -1;
+	}
 	int portnum = 8080;
 
 	char *port = getenv("PORT");
@@ -52,7 +65,7 @@ int main(void) {
 		return 0;
 	}
 
-	printf("db is listening on port %d\n", portnum);
+	/* DEBUG("db is listening on port %d\n", portnum);
 
 	/* Now we listen */
 	listen(server, 10);
