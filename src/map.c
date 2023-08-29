@@ -6,7 +6,6 @@ int init(map *root) {
 		return 0;
 	}
 
-	root->count = 0;
 	root->next = NULL;
 	root->content = NULL;
 
@@ -14,89 +13,59 @@ int init(map *root) {
 }
 
 int add(map *root, unsigned char *key, unsigned char *data) {
-	map *curr = root;
-	char found = 0;
-	int i = 0;
-
-	while (*key) {
-		/* Check next */
-		for (i = 0; i < curr->count; i++) {
-			if (curr->next[i].letter == *key) {
-				curr = (curr->next+i);
-				found = 1;
-				break;
-			}
-		}
-
-		if (found) {
-			found = 0;
-			*key++;
-			continue;
-		}
-
-		/* Create the next element if not at end of key */
-		if (*key) {
-			curr->count++;
-			if (!curr->next) {
-				curr->next = malloc(sizeof(map));
-			} else {
-				curr->next = realloc(curr->next, (curr->count) * sizeof(map));
-			}
-			if (!curr->next) {
-				puts("next allocation error");
-				return 0;
-			}
-
-			curr = &curr->next[curr->count - 1];
-			if (!init(curr)) {
-				puts("initialization error");
-				return 0;
-			}
-		}
-		curr->letter = *(key++);
-	}
-
-	curr->content = data;
-	if (!curr->content) {
-		puts("content allocation error");
+	if (!*key) {
+		root->content = data;
 		return 0;
 	}
 
-	return 1;
-}
-
-unsigned char *get(map *root, unsigned char *key) {
-	map *curr = root;
-	int i = 0;
-	char found;
-
-	while (*key) {
-		found = 0;
-		for (i = 0; i < curr->count; i++) {
-			if (curr->next[i].letter == *key) {
-				curr = &curr->next[i];
-				found = 1;
-				break;
-			}
-		}
-
-		key++;
+	if (!root->next) {
+		root->next = malloc(2*sizeof(map**));
+		root->next[0] = malloc(sizeof(map*));
+		root->next[0]->letter = *key;
+		root->next[1] = NULL;
+		return add(root->next[0], ++key, data);
 	}
-	
-	return found ? curr->content : NULL;
+
+	int n;
+	for (n = 0; root->next[n]; n++) {
+		if (root->next[n]->letter == *key) {
+			return add(root->next[n], ++key, data);
+		}
+	}
+
+	/* letter not found */
+	root->next = realloc(root->next, n+2 * sizeof(map**));
+	root->next[n] = malloc(sizeof(map*));
+	root->next[n]->letter = *key;
+	root->next[n+1] = NULL;
+	return add(root->next[n], ++key, data);
 }
 
-/* TODO: remove from count and next array */
-int delete(map *root, unsigned char *key) {
+unsigned char *get(map *root, char *key) {
+	if (!*key) {
+		return root->content;
+	}
+
+	for (int i = 0; root->next[i]; i++) {
+		if (root->next[i]->letter == *key) {
+			return get(root->next[i], ++key);
+		}
+	}
+
+	return NULL;
+}
+
+/* TODO: remove from array */
+int del(map *root, unsigned char *key) {
 	map *curr = root;
 	int i = 0;
 	char found;
 
 	while (*key) {
 		found = 0;
-		for (i = 0; i < curr->count; i++) {
-			if (curr->next[i].letter == *key) {
-				curr = &curr->next[i];
+		for (i = 0; curr->next[i]; i++) {
+			if (curr->next[i]->letter == *key) {
+				curr = curr->next[i];
 				found = 1;
 				break;
 			}
@@ -117,9 +86,9 @@ int delete(map *root, unsigned char *key) {
 int destroy(map *root) {
 	int i, count = 1;
 
-	/* Descent into each next element and destroy it */
-	for (i = 0; i < root->count; i++) {
-		count += destroy(&root->next[i]);
+	/* Descend into each next element and destroy it */
+	for (i = 0; root->next[i]; i++) {
+		count += destroy(root->next[i]);
 	}
 	
 	/* Erase itself	*/

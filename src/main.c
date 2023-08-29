@@ -2,7 +2,7 @@
 #include "handler.h"
 #include <arpa/inet.h>
 #include <signal.h>
-#include <libmap.h>
+#include "map.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -65,7 +65,7 @@ int main(void) {
 		return 0;
 	}
 
-	/* DEBUG("db is listening on port %d\n", portnum);
+	/* DEBUG("db is listening on port %d\n", portnum); */
 
 	/* Now we listen */
 	listen(server, 10);

@@ -9,7 +9,7 @@
 
 #include <stddef.h>
 
-unsigned char *fetchkey(unsigned char *key);
+unsigned char *fetchkey(char *key);
 
 int putkey(unsigned char *rec);
 

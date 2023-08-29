@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <assert.h>
-#include <map.h>
+#include "map.h"
 
 map addrs;
 

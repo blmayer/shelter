@@ -7,19 +7,18 @@
 typedef struct node map;
 
 struct node {
-	int count;
 	char letter;
 	unsigned char *content;
-	map *next;
+	map **next;
 };
 
 int init(map *root);
 
 int add(map *root, unsigned char *key, unsigned char *data);
 
-unsigned char *get(map *root, unsigned char *key);
+unsigned char *get(map *root, char *key);
 
-int delete(map *root, unsigned char *key);
+int del(map *root, unsigned char *key);
 
 int destroy(map *root);
 

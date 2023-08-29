@@ -24,10 +24,9 @@ int typelen(unsigned char *data) {
 			return 1;
 		case type_link:
 			return 1;
-		case type_key:
-			return 3;
+		default:
+			return 5;
 	}
-	return 5;
 }
 
 unsigned char *data(unsigned char *rec) {
@@ -49,25 +48,27 @@ int datalen(unsigned char *data) {
 			return 8;
 		case type_key:
 			data++;
-			return *(short*)data;
+			return *(int*)data;
+		default:
+			data++;
+			return *(int*)data;
 	}
-	data++;
-	return *(int*)data;
 }
 
-int reclen(unsigned char *rec) {
+size_t reclen(unsigned char *rec) {
 	rec++;
-	return *(int*)rec;
+	return *(size_t*)rec;
 }
 
 void printrec(unsigned char *rec) {
-	for (int i = 0; i < datalen(rec) + typelen(rec); i++) {
+	int i;
+	for (i = 0; i < datalen(rec) + typelen(rec); i++) {
 		printf("%2d ", i);
 	}
 	puts("");
-	for (int i = 0; i < datalen(rec) + typelen(rec); i++) {
+	for (i = 0; i < datalen(rec) + typelen(rec); i++) {
 		if (rec[i] > 30 && rec[i] < 128) {
-			printf("%.2x ", rec[i]);
+			printf("%2c ", rec[i]);
 		} else {
 			printf("%.2x ", rec[i]);
 		}
@@ -77,7 +78,6 @@ void printrec(unsigned char *rec) {
 
 unsigned char *addlink(unsigned char *from, char *field, unsigned char *addr) {
 	int from_len = datalen(from) + typelen(from);
-	int key_len = datalen(data(from));
 	int new_len = from_len + typelen((unsigned char[]){type_key}) + strlen(field) + 1 + sizeof(char *);
 
 	// update len part

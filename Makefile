@@ -21,6 +21,9 @@ test: test_hash
 test_hash: src/test/test_hash.c src/aux.c
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
+test_main: src/test_main.c src/record.o src/methods.o src/map.o
+	$(CC) $(CFLAGS) $^ -o bin/$@
+
 debug:
 	$(MAKE) CFLAGS="$(CFLAGS) -fsanitize=address" main
 	

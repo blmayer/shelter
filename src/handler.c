@@ -17,7 +17,7 @@ int handle_request(int cli_conn) {
 	printf("read %lu bytes\n", n);
 
 	char op = getop(data);
-	size_t len = reclen(data[1]);
+	size_t len = reclen(&data[1]);
 	printf("operation: %u\n", op);
 	printf("len: %li\ndata: ", len);
 
@@ -29,10 +29,10 @@ int handle_request(int cli_conn) {
 	unsigned char *ret;
 	switch (op) {
 	case op_get:
-		ret = fetchkey(&data+1);
+		ret = fetchkey((unsigned char *)data+1);
 		break;
 	case op_put:
-		ret = putkey(&data+1);
+		ret = (unsigned char *)putkey((unsigned char *)data+1);
 	}
 	printf("operation returned %p\n", ret);
 
