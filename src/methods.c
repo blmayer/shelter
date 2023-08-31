@@ -47,12 +47,15 @@ int linkobjs(char* from, char *field, char *to) {
 	return putkey(new);
 }
 
-int dump(unsigned char *rec) {
+/* dump expects the full record, i.e. {type_record len data...} */
+int dumpall(unsigned char *rec) {
 	char path[256];
 	strcpy(path, DATA_DIR);
-	strcat(path, (char *)data(data(rec)));
+	strncat(path, (char *)data(data(rec)), datalen(data(rec)));
 
 	printf("writing file %s\n", path);
+	printrec(rec);
+	printf("reclen: %zu\n", reclen(rec));
 	int file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
 	if (file < 0) {
 		return -1;
@@ -62,7 +65,7 @@ int dump(unsigned char *rec) {
 	return !close(file);
 }
 
-int load() {
+int loadall() {
 	DIR *dp;
 	dp = opendir(DATA_DIR);
 	if (dp == NULL) {
@@ -71,26 +74,14 @@ int load() {
 
 	struct dirent *entry;
 	while((entry = readdir(dp))) {
-		char name[256];
-		strcpy(name, DATA_DIR);
-		strcat(name, entry->d_name);
-		puts(name);
-		FILE *file = fopen(name, O_RDONLY);
-		if (!file) {
-			return -1;
-		}
-		
-		fseek(file, 0, SEEK_END);
-		size_t reclen = ftell(file);
-		fseek(file, 0, SEEK_SET);
-		
-		unsigned char *rec = malloc(reclen);
-		fread(rec, 1, reclen, file);
-		fclose(file);
-
-		int res = putkey(rec);
+		unsigned char *rec = malloc(1);
+		int res = load(entry->d_name, rec);
 		if (res) {
-			puts("error reading file");
+			printf("error reading %s\n", entry->d_name);
+		}
+		res = putkey(rec);
+		if (res) {
+			printf("putrec error %d\n", res);
 		}
 	}
 

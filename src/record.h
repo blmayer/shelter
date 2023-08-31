@@ -33,4 +33,8 @@ unsigned char *next(unsigned char *rec);
 
 unsigned char *data(unsigned char *rec);
 
+int dump(unsigned char *rec);
+
+int load(char *key, unsigned char *rec);
+
 #endif
