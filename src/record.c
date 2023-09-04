@@ -27,7 +27,7 @@ int typelen(unsigned char *data) {
 	case type_decimal:
 		return 1;
 	case type_link:
-		return 1;
+		return 5;
 	default:
 		return 5;
 	}
@@ -64,51 +64,53 @@ size_t reclen(unsigned char *rec) {
 }
 
 void printrec(unsigned char *rec) {
-	int i;
+	size_t i;
 	for (i = 0; i < reclen(rec); i++) {
-		printf("%2d ", i);
+		printf("%2zu ", i);
 	}
 	puts("");
 	for (i = 0; i < reclen(rec); i++) {
-		if (rec[i] > 30 && rec[i] < 128) {
+		if (rec[i] > 32 && rec[i] < 128) {
 			printf("%2c ", rec[i]);
 		} else {
-			printf("%.2x ", rec[i]);
+			printf("%02d ", rec[i]);
 		}
 	}
 	puts("");
 }
 
-unsigned char *addlink(unsigned char *from, char *field, unsigned char *addr) {
-	int from_len = datalen(from) + typelen(from);
-	int new_len = from_len + typelen((unsigned char[]){type_key}) +
-		      strlen(field) + 1 + sizeof(char *);
-
-	// update len part
-	unsigned char *new = malloc(new_len);
-	unsigned char *orig = from;
-	unsigned char *start = new;
-	*new ++ = *from++;
-	*new = new_len - typelen(orig);
-	new += sizeof(int);
-	from += sizeof(int);
+unsigned char *addlink(unsigned char *fromrec, char *field, char *to) {
+	int from_len = datalen(fromrec) + 1;
+	int new_len = from_len + 15 + strlen(field) + strlen(to);
 
 	// copy data
-	memcpy(new, from, datalen(orig));
+	fromrec = realloc(fromrec, new_len);
+	unsigned char *old = fromrec;
 
-	// add new record at end
-	new += datalen(orig);
-	*new = type_link;
-	new ++;
-	*new = strlen(field) + 1 + sizeof(char *);
-	new += sizeof(int);
-	memcpy(new, field, strlen(field));
-	new += strlen(field);
-	*new = 0;
-	new ++;
-	memcpy(new, &addr, sizeof(char *));
+	// update len part
+	fromrec ++;
+	*fromrec = new_len - 1;
+	fromrec += sizeof(int);
 
-	return start;
+	// add fromrec record at end
+	fromrec += from_len - sizeof(int) - 1;
+	*fromrec = type_link;
+	fromrec ++;
+	*fromrec = strlen(field) + 1 + 2*sizeof(int) + strlen(to);
+	fromrec += sizeof(int);
+	*fromrec = type_key;
+	fromrec ++;
+	*fromrec = strlen(field);
+	fromrec += sizeof(int);
+	memcpy(fromrec, field, strlen(field));
+	fromrec += strlen(field);
+	*fromrec = type_key;
+	fromrec ++;
+	*fromrec = strlen(to);
+	fromrec += sizeof(int);
+	memcpy(fromrec, to, strlen(to));
+
+	return old;
 }
 
 unsigned char *next(unsigned char *rec) {

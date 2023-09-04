@@ -35,16 +35,15 @@ int linkobjs(char* from, char *field, char *to) {
 		return -1;
 	}
 
-	unsigned char *to_obj = fetchkey(to);
-	if (!to_obj) {
-		return -2;
-	}
-
-	unsigned char *new = addlink(from_obj, field, to_obj);
+	unsigned char *new = addlink(from_obj, field, to);
 	if (!new) {
 		return -3;
 	}
-	return putkey(new);
+	if (new != from_obj) {
+		return putkey(new);
+
+	}
+	return 0;
 }
 
 /* dump expects the full record, i.e. {type_record len data...} */

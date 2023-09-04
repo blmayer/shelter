@@ -15,7 +15,7 @@ size_t datalen(unsigned char *data);
 
 size_t reclen(unsigned char *rec);
 
-unsigned char *addlink(unsigned char *from, char *field, unsigned char *addr);
+unsigned char *addlink(unsigned char *from, char *field, char *addr);
 
 void printrec(unsigned char *rec);
 
