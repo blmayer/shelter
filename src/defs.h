@@ -3,9 +3,10 @@
 
 #define VERSION "1.0.0"
 #define MAX_DATA_SIZE 1024
-#define DATA_DIR "data/"
+#define DB_FILE "data.bin"
+#define IDX_FILE "index.bin"
 
-#define DEBUG(args...) (if (debug) printf("[DEBUG] %s:%d ", __FILE__, __LINE__); printf(args))
+#define DEBUG(arg) if (debug) printf("[DEBUG] %s:%d %s", __FILE__, __LINE__, arg)
 
 enum type { 
 	type_false = 0,
@@ -25,6 +26,12 @@ enum operation {
 	op_put = 1, 
 	op_update = 2, 
 	op_del = 4
+};
+
+struct freenode {
+	int pos;
+	int size;
+	struct freenode *next;
 };
 
 #endif

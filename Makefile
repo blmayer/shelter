@@ -33,6 +33,10 @@ test_dump: src/test_dump.c src/record.o src/methods.o src/map.o
 test_load: src/test_load.c src/record.o src/methods.o src/map.o
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
+test_alloc: src/test_alloc.c src/alloc.o
+	$(CC) $(CFLAGS) $^ -o bin/$@
+	./bin/$@
+
 debug:
 	$(MAKE) CFLAGS="$(CFLAGS) -fsanitize=address" main
 	

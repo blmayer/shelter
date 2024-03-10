@@ -9,12 +9,15 @@
 #include "map.h"
 #include "defs.h"
 #include "record.h"
+#include "alloc.h"
 
 extern map addrs;
 extern char debug;
+extern unsigned char mem[100*1024*1024];
 
 unsigned char *fetchkey(char *key) {
-	return get(&addrs, key);
+	int pos = get(&addrs, key);
+	return &mem[pos];
 }
 
 int putkey(unsigned char *rec) {
@@ -24,7 +27,10 @@ int putkey(unsigned char *rec) {
 	memcpy(key, key_data, datalen(key_rec));
 	key[datalen(key_rec)] = 0;
 
-	int ret = add(&addrs, key, rec);
+	int pos = findpos(datalen(rec));
+	int ret = add(&addrs, key, pos);
+	memcpy(mem, rec, datalen(rec));
+
 	free(key);
 	return ret;
 }
@@ -46,10 +52,10 @@ int linkobjs(char* from, char *field, char *to) {
 	return 0;
 }
 
-/* dump expects the full record, i.e. {type_record len data...} */
-int dumpall(unsigned char *rec) {
+/* dumpindex expects the full record, i.e. {type_record len data...} */
+int dumpindex(unsigned char *rec) {
 	char path[256];
-	strcpy(path, DATA_DIR);
+	strcpy(path, IDX_FILE);
 	strncat(path, (char *)data(data(rec)), datalen(data(rec)));
 
 	printf("writing file %s\n", path);
@@ -64,9 +70,9 @@ int dumpall(unsigned char *rec) {
 	return !close(file);
 }
 
-int loadall() {
+int loadindex() {
 	DIR *dp;
-	dp = opendir(DATA_DIR);
+	dp = opendir(IDX_FILE);
 	if (dp == NULL) {
 	  return -1;
 	}

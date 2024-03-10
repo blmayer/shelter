@@ -8,6 +8,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+extern int dbfile;
+extern unsigned char mem[100*1024*1024];
+
 char getop(unsigned char *rec) {
 	return rec[0] >> 4;
 }
@@ -118,26 +121,13 @@ unsigned char *next(unsigned char *rec) {
 }
 
 /* dump expects the full record, i.e. {type_record len data...} */
-int dump(unsigned char *rec) {
-	char path[256];
-	strcpy(path, DATA_DIR);
-	strncat(path, (char *)data(data(rec)), datalen(data(rec)));
-
-	printf("writing file %s\n", path);
-	printrec(rec);
-	printf("reclen: %zu\n", reclen(rec));
-	int file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
-	if (file < 0) {
-		return -1;
-	}
-
-	write(file, rec, reclen(rec));
-	return !close(file);
+int dump(int pos, int size) {
+	lseek(dbfile, pos, SEEK_SET);
+	return write(dbfile, &mem[pos], size);
 }
 
 int load(char *key, unsigned char *rec) {
 	char name[256];
-	strcpy(name, DATA_DIR);
 	strcat(name, key);
 	FILE *file = fopen(name, "r");
 	if (!file) {

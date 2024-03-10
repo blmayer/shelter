@@ -8,15 +8,15 @@ typedef struct node map;
 
 struct node {
 	char letter;
-	unsigned char *content;
+	int pos;
 	map **next;
 };
 
 int init(map *root);
 
-int add(map *root, unsigned char *key, unsigned char *data);
+int add(map *root, unsigned char *key, int pos);
 
-unsigned char *get(map *root, char *key);
+int get(map *root, char *key);
 
 int del(map *root, unsigned char *key);
 

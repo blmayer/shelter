@@ -8,31 +8,31 @@
 #include <unistd.h>
 
 int handle_request(int cli_conn) {
-	unsigned char data[MAX_DATA_SIZE] = {};
-	size_t n = recv(cli_conn, &data, MAX_DATA_SIZE, 0);
+	unsigned char msg[MAX_DATA_SIZE] = {};
+	size_t n = recv(cli_conn, &msg, MAX_DATA_SIZE, 0);
 	if (n < 1) {
 		puts("no data read");
 		return -1;
 	}
 	printf("read %lu bytes\n", n);
 
-	char op = getop(data);
-	size_t len = reclen(&data[1]);
+	char op = getop(msg);
+	size_t len = reclen(&msg[1]);
 	printf("operation: %u\n", op);
 	printf("len: %li\ndata: ", len);
 
 	for (size_t i = 0; i < n; i++) {
-		printf("%u ", data[i]);
+		printf("%u ", msg[i]);
 	}
 	puts("");
 
 	unsigned char *ret;
 	switch (op) {
 	case op_get:
-		ret = fetchkey((unsigned char *)data+1);
+		ret = fetchkey((char *)msg+1);
 		break;
 	case op_put:
-		ret = (unsigned char *)putkey((unsigned char *)data+1);
+		ret = (unsigned char *)putkey((unsigned char *)msg+1);
 	}
 	printf("operation returned %p\n", ret);
 

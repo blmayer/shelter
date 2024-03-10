@@ -1,5 +1,8 @@
-#include <string.h>
 #include "map.h"
+#include "defs.h"
+#include <string.h>
+
+extern struct freenode *freelist;
 
 int init(map *root) {
 	if (!root) {
@@ -7,43 +10,42 @@ int init(map *root) {
 	}
 
 	root->next = NULL;
-	root->content = NULL;
 
 	return 1;
 }
 
-int add(map *root, unsigned char *key, unsigned char *data) {
+int add(map *root, unsigned char *key, int pos) {
 	if (!*key) {
-		root->content = data;
+		root->pos = pos;
 		return 0;
 	}
 
 	if (!root->next) {
-		root->next = malloc(2*sizeof(map**));
-		root->next[0] = malloc(sizeof(map*));
+		root->next = malloc(2 * sizeof(map **));
+		root->next[0] = malloc(sizeof(map *));
 		root->next[0]->letter = *key;
 		root->next[1] = NULL;
-		return add(root->next[0], ++key, data);
+		return add(root->next[0], ++key, pos);
 	}
 
 	int n;
 	for (n = 0; root->next[n]; n++) {
 		if (root->next[n]->letter == *key) {
-			return add(root->next[n], ++key, data);
+			return add(root->next[n], ++key, pos);
 		}
 	}
 
 	/* letter not found */
-	root->next = realloc(root->next, n+2 * sizeof(map**));
-	root->next[n] = malloc(sizeof(map*));
+	root->next = realloc(root->next, n + 2 * sizeof(map **));
+	root->next[n] = malloc(sizeof(map *));
 	root->next[n]->letter = *key;
-	root->next[n+1] = NULL;
-	return add(root->next[n], ++key, data);
+	root->next[n + 1] = NULL;
+	return add(root->next[n], ++key, pos);
 }
 
-unsigned char *get(map *root, char *key) {
+int get(map *root, char *key) {
 	if (!*key) {
-		return root->content;
+		return root->pos;
 	}
 
 	for (int i = 0; root->next[i]; i++) {
@@ -52,7 +54,7 @@ unsigned char *get(map *root, char *key) {
 		}
 	}
 
-	return NULL;
+	return -1;
 }
 
 /* TODO: remove from array */
@@ -75,9 +77,8 @@ int del(map *root, unsigned char *key) {
 	}
 
 	/* Delete only the content */
-	if (found && curr->content) {
-		free(curr->content);
-		curr->content = NULL;
+	if (found) {
+		curr->pos = -1;
 	}
 
 	return 1;
@@ -90,14 +91,10 @@ int destroy(map *root) {
 	for (i = 0; root->next[i]; i++) {
 		count += destroy(root->next[i]);
 	}
-	
-	/* Erase itself	*/
-	if (root->content) {
-		free(root->content);
-	}
+
 	if (root->next) {
 		free(root->next);
 	}
-	
+
 	return count;
 }
