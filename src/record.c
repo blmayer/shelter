@@ -121,7 +121,7 @@ unsigned char *next(unsigned char *rec) {
 }
 
 /* dump expects the full record, i.e. {type_record len data...} */
-int dump(int pos, int size) {
+int dump(int pos, size_t size) {
 	lseek(dbfile, pos, SEEK_SET);
 	return write(dbfile, &mem[pos], size);
 }

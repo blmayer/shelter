@@ -8,12 +8,11 @@
 #define METHODS_H
 
 #include <stddef.h>
+#include "defs.h"
 
 unsigned char *fetchkey(char *key);
 
 int putkey(unsigned char *rec);
-
-int dump(unsigned char *rec);
 
 int linkobjs(char* from, char *field, char *to);
 
@@ -27,9 +26,9 @@ size_t reclen(unsigned char *rec);
 
 size_t getlen(unsigned char *rec);
 
-enum type gettype(unsigned char *rec);
-
 size_t keylen(unsigned char *rec);
+
+int writeindex(char key[MAX_KEY_SIZE], int pos);
 
 unsigned char *next(unsigned char *rec);
 

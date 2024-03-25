@@ -2,12 +2,12 @@
 #include "handler.h"
 #include "map.h"
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -15,9 +15,10 @@ char debug = 0;
 int server;
 
 map addrs;
-unsigned char mem[100*1024*1024] = {};	/* 100MiB */
+unsigned char mem[100 * 1024 * 1024] = {}; /* 100MiB */
 struct freenode *freelist;
 int dbfile;
+int idxfile;
 
 void sig_handler() {
 	puts("closing server");
@@ -37,18 +38,30 @@ int main(void) {
 	}
 
 	freelist = malloc(sizeof(struct freenode));
- 	freelist->pos = 0;
-	freelist->size = 100*1024*1024;
+	freelist->pos = 0;
+	freelist->size = 100 * 1024 * 1024;
 
-	int f = stat(DB_FILE, NULL);
-	if (f < 0) {
-		dbfile = open(DB_FILE, O_RDWR | O_CREAT, 0777);
-	} else {
-		dbfile = open(DB_FILE, O_RDWR);
-		read(dbfile, &mem, 100*1024*1024);
-	}
-	if (dbfile < 0) {
-		return -1;
+	{
+		int f = stat(DB_FILE, NULL);
+		if (f < 0) {
+			dbfile = open(DB_FILE, O_RDWR | O_CREAT, 0777);
+		} else {
+			dbfile = open(DB_FILE, O_RDWR);
+			read(dbfile, &mem, 100 * 1024 * 1024);
+		}
+		if (dbfile < 0) {
+			return -1;
+		}
+
+		f = stat(IDX_FILE, NULL);
+		if (f < 0) {
+			idxfile = open(DB_FILE, O_RDWR | O_CREAT, 0777);
+		} else {
+			idxfile = open(DB_FILE, O_RDWR);
+		}
+		if (idxfile < 0) {
+			return -1;
+		}
 	}
 
 	int portnum = 8080;
@@ -68,7 +81,7 @@ int main(void) {
 		return 0;
 	}
 
-	/* mAke server reuse addresses */
+	/* make server reuse addresses */
 	setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
 
 	struct sockaddr_in serv, client;

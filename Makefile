@@ -1,7 +1,7 @@
-.PHONY: main clean test debug test_hash
+.PHONY: clean test debug test_hash
 CFLAGS=-g -O0 -Wall -Wextra
 
-main: $(patsubst %.c,%.o,$(wildcard src/*.c))
+db: $(patsubst %.c,%.o,$(wildcard src/*.c))
 	[ -e bin ] || mkdir bin
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
@@ -21,19 +21,20 @@ test: test_hash
 test_hash: src/test/test_hash.c src/aux.c
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
-test_main: src/test_main.c src/record.o src/methods.o src/map.o
+test_main: src/test/test_main.c src/record.o src/methods.o src/map.o src/alloc.o
+	$(CC) $(CFLAGS) $^ -o bin/$@
+	./bin/test_main
+
+test_addlink: src/test/test_addlink.c src/record.o src/methods.o src/map.o
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
-test_addlink: src/test_addlink.c src/record.o src/methods.o src/map.o
+test_dump: src/test/test_dump.c src/record.o src/methods.o src/map.o
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
-test_dump: src/test_dump.c src/record.o src/methods.o src/map.o
+test_load: src/test/test_load.c src/record.o src/methods.o src/map.o
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
-test_load: src/test_load.c src/record.o src/methods.o src/map.o
-	$(CC) $(CFLAGS) $^ -o bin/$@
-
-test_alloc: src/test_alloc.c src/alloc.o
+test_alloc: src/test/test_alloc.o src/alloc.o
 	$(CC) $(CFLAGS) $^ -o bin/$@
 	./bin/$@
 

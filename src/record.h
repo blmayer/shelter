@@ -33,7 +33,7 @@ unsigned char *next(unsigned char *rec);
 
 unsigned char *data(unsigned char *rec);
 
-int dump(unsigned char *rec);
+int dump(int pos, size_t len);
 
 int load(char *key, unsigned char *rec);
 

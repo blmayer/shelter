@@ -14,7 +14,7 @@ struct node {
 
 int init(map *root);
 
-int add(map *root, unsigned char *key, int pos);
+int add(map *root, char *key, int pos);
 
 int get(map *root, char *key);
 

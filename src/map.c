@@ -14,7 +14,7 @@ int init(map *root) {
 	return 1;
 }
 
-int add(map *root, unsigned char *key, int pos) {
+int add(map *root, char *key, int pos) {
 	if (!*key) {
 		root->pos = pos;
 		return 0;
@@ -24,6 +24,7 @@ int add(map *root, unsigned char *key, int pos) {
 		root->next = malloc(2 * sizeof(map **));
 		root->next[0] = malloc(sizeof(map *));
 		root->next[0]->letter = *key;
+		root->next[0]->pos = -1;
 		root->next[1] = NULL;
 		return add(root->next[0], ++key, pos);
 	}
@@ -39,6 +40,7 @@ int add(map *root, unsigned char *key, int pos) {
 	root->next = realloc(root->next, n + 2 * sizeof(map **));
 	root->next[n] = malloc(sizeof(map *));
 	root->next[n]->letter = *key;
+	root->next[n]->pos = -1;
 	root->next[n + 1] = NULL;
 	return add(root->next[n], ++key, pos);
 }
