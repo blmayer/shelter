@@ -4,6 +4,7 @@
 #define VERSION "1.0.0"
 #define MAX_KEY_SIZE 128
 #define MAX_DATA_SIZE 1024
+#define DB_SIZE 100 * 1024 * 1024
 #define DB_FILE "data.bin"
 #define IDX_FILE "index.bin"
 

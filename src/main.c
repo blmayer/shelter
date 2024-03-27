@@ -15,7 +15,7 @@ char debug = 0;
 int server;
 
 map addrs;
-unsigned char mem[100 * 1024 * 1024] = {}; /* 100MiB */
+unsigned char mem[DB_SIZE] = {}; /* 100MiB */
 struct freenode *freelist;
 int dbfile;
 int idxfile;
@@ -39,12 +39,13 @@ int main(void) {
 
 	freelist = malloc(sizeof(struct freenode));
 	freelist->pos = 0;
-	freelist->size = 100 * 1024 * 1024;
+	freelist->size = DB_SIZE;
 
 	{
 		int f = stat(DB_FILE, NULL);
 		if (f < 0) {
 			dbfile = open(DB_FILE, O_RDWR | O_CREAT, 0777);
+			write(dbfile, mem, DB_SIZE);
 		} else {
 			dbfile = open(DB_FILE, O_RDWR);
 			read(dbfile, &mem, 100 * 1024 * 1024);

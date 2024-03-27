@@ -36,7 +36,8 @@ int handle_request(int cli_conn) {
 	printf("operation returned %p\n", ret);
 
 	if (!ret) {
-		write(cli_conn, 0, 1);
+		char zero = '\0';
+		write(cli_conn, &zero, 1);
 		return 0;
 	}
 
