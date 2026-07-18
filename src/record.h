@@ -17,6 +17,8 @@ size_t reclen(unsigned char *rec);
 
 unsigned char *addlink(unsigned char *from, char *field, char *addr);
 
+unsigned char *rmlink(unsigned char *fromrec, char *field, char *to);
+
 void printrec(unsigned char *rec);
 
 size_t getlen(unsigned char *data);
@@ -35,6 +37,10 @@ unsigned char *data(unsigned char *rec);
 
 int dump(int pos, size_t len);
 
-int load(char *key, unsigned char *rec);
+int load(char *key, unsigned char **rec);
+
+/* Parse a type_key field into a null-terminated string.
+ * Advances *p past the field. Returns 0 on success, -1 on error. */
+int parse_key_field(unsigned char **p, char *buf, size_t bufsz);
 
 #endif

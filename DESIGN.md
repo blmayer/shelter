@@ -1,140 +1,282 @@
-# Data
+# Shelter — Design Document
 
-Each object is stored in memory and in disk. Converting one to the other
-when starting up or dumping objects.
+Shelter is a graph-oriented key-value database written in C. Objects are
+identified by a unique key, can hold arbitrary typed data, and can be linked
+to other objects to form a traversable graph.
 
-Here each object represents one unique datum that is stored, to indentify one
-object the key field is used. Objects can be linked to each other if they are
-related in some way, this is translated to memory representation as a pointer,
-and to disk as a symlink.
+The entire dataset lives in a flat memory arena (`mem[]`). Persistence is
+achieved by writing the raw memory contents to a binary file (`data.bin`)
+and recording key→position mappings in a text index (`index.bin`). Because
+the memory layout *is* the disk layout, saving and loading are essentially
+`memcpy`.
+
+---
+
+## Architecture
+
+```
+  Client (TCP)
+      │
+      ▼
+ ┌──────────┐    ┌──────────┐    ┌──────────────┐
+ │ handler.c │───►│ methods.c│───►│ mem[100 MiB] │
+ │  (parse)  │    │  (logic) │    │  (arena)     │
+ └──────────┘    └────┬─────┘    └──────┬───────┘
+                      │                 │
+                 ┌────▼─────┐     ┌─────▼──────┐
+                 │  map.c   │     │  alloc.c   │
+                 │  (trie   │     │  (free-list│
+                 │   index) │     │   alloc)   │
+                 └──────────┘     └────────────┘
+```
+
+| Component   | File          | Purpose                                      |
+|-------------|---------------|----------------------------------------------|
+| Server      | `main.c`      | TCP accept loop, fork-per-connection          |
+| Handler     | `handler.c`   | Parse wire messages, dispatch to methods      |
+| Methods     | `methods.c`   | Business logic: get, put, update, delete, link, unlink, query |
+| Record      | `record.c`    | Binary record encoding, addlink, rmlink       |
+| Map (trie)  | `map.c`       | In-memory trie index: key → arena position    |
+| Allocator   | `alloc.c`     | Free-list arena allocator                     |
 
 
-## Fields
+## Data model
 
-There are some constraints regarding objects, as they are flexible data some
-extra care must be taken.
+### Type codes
+
+Each datum starts with a one-byte type tag:
+
+| Code | Char | Type     | Has length field? |
+|------|------|----------|-------------------|
+| `'f'`| `f`  | false    | No (0 bytes data) |
+| `'t'`| `t`  | true     | No (0 bytes data) |
+| `'i'`| `i`  | int      | No (4 bytes data) |
+| `'d'`| `d`  | decimal  | No (4 bytes data) |
+| `'s'`| `s`  | string   | Yes               |
+| `'m'`| `m`  | map      | Yes               |
+| `'l'`| `l`  | list     | Yes               |
+| `'L'`| `L`  | link     | Yes               |
+| `'k'`| `k`  | key      | Yes               |
+| `'r'`| `r`  | record   | Yes               |
 
 
-### Key field
+### Record layout
 
-Objects are required to have a key field to uniquely identify it. This field
-is special and has the type "key", with its own representations.
+A record is a flat byte sequence: a type byte, a 4-byte little-endian
+length, and then consecutive typed fields.
+
+```
+byte 0     1..4              5 ...
++------+-------------------+-----------------------------------+
+| 'r'  | total_data_len    | field₁  field₂  ...  fieldₙ      |
++------+-------------------+-----------------------------------+
+```
+
+`total_data_len` counts all bytes after itself (i.e. `reclen = 1 + total_data_len`).
+
+Every record **must** start with a `type_key` field that contains the
+record's unique key string:
+
+```
+byte 0    1..4          5..5+n
++-----+----------+--------------+
+| 'k' | key_len  | key bytes    |
++-----+----------+--------------+
+```
+
+
+### Variable-length fields
+
+Strings, keys, links, maps, and lists all follow the pattern:
+
+```
++------+----------+------- ... ------+
+| type | data_len |    data bytes    |
++------+----------+------- ... ------+
+  1 B     4 B LE      data_len bytes
+```
+
+
+### Integers and decimals
+
+Fixed-size, 4 bytes little-endian, no length field:
+
+```
++------+-----------+
+| type | value(4B) |
++------+-----------+
+```
+
+
+### Booleans
+
+Just the type byte, no data:
+
+```
++------+
+| type |
++------+
+```
 
 
 ### Links
 
-A relation can be added between two or more objects, they can represent any
-one to many relation as in real life.
-
-
-### Data
-
-Likewise, objects contain data in any form, strings, lists, maps, or numbers.
-Objects can be any of these or contain them.
-
-
-## Filesystem representation
-
-For the disk we use the filesystem to designate objects by its key, objects
-are saved using the key value as the path, e.g. the object with key "user/x"
-would be saved in the folder "user" as a file "x".
-
-
-## Memory representation
-
-An object is just an array of bytes, with 2 logical parts: key and data. As
-C does not have dynamicaly sized arrays, an object is just []char.
-
-To separate the key part from the data part a zero byte is used. The data
-part starts with a 4 bytes integer that represents its total size, and then
-the actual data that the user wants to store.
+A link connects the current record to another record by key. The link's
+data portion contains two sub-keys: the *field name* and the *target key*.
 
 ```
-                             bytes
-0      1       2       3       4       5       6       7       8
-+------+-------+-------+-------+-------+-------+-------+-------+
-< key of variable size >  \0   < -------- data length -------- >
-+------+-------+-------+-------+-------+-------+-------+-------+
-< --------------------------- data --------------------------- >
-+------+-------+-------+-------+-------+-------+-------+-------+
++-----+----------+-----+---------+-------+-----+---------+--------+
+| 'L' | link_len | 'k' | fld_len | field | 'k' | tgt_len | target |
++-----+----------+-----+---------+-------+-----+---------+--------+
 ```
 
-Now the data part has its own components, each data type has one byte to
-indicate its type, and, depending on the type 4 bytes to indicate the length.
-Fixed sizes like int, float, double and bool do not need the length. In the
-next examples some data types are represented:
-
-
-### numbers
-
-Number like, int, floats are fixed size, their difference is the type byte:
-4: integer and 5:float.
-
+Example: a link with field "friend" pointing to key "Alice":
 ```
-                             bytes
-0      1       2       3       4       5       6       7       8    ...
-+------+-------+-------+-------+-------+-------+-------+-------+---
-  type < number data in little endian  >
-+------+-------+-------+-------+-------+-------+-------+-------+---
+'L' 16,0,0,0  'k' 6,0,0,0 "friend"  'k' 5,0,0,0 "Alice"
 ```
 
 
-### String
+## Operations
+
+### Wire protocol
+
+The server listens on a TCP port (default 8080, configurable via the `PORT`
+environment variable). Each message is a single byte identifying the
+operation, followed by operation-specific payload bytes.
 
 ```
-                             bytes
-0      1       2       3       4       5       6       7       8    ...
-+------+-------+-------+-------+-------+-------+-------+-------+---
-    3  < ----- length of string ------ |  string data in ASCII ---- ...
-+------+-------+-------+-------+-------+-------+-------+-------+---
++------+------ ... ------+
+|  op  |    payload      |
++------+------ ... ------+
+```
+
+Operation codes (ASCII chars):
+
+| Op    | Code | Payload                          | Response              |
+|-------|------|----------------------------------|-----------------------|
+| GET   | `'g'`| `key_field`                      | Full record, or `\0`  |
+| PUT   | `'p'`| Full record                      | `'t'` / `'f'`        |
+| UPDATE| `'u'`| Full record (key must exist)     | `'t'` / `'f'`        |
+| DELETE| `'d'`| `key_field`                      | `'t'` / `'f'`        |
+| LINK  | `'l'`| `from_key` `field_key` `to_key`  | `'t'` / `'f'`        |
+| UNLINK| `'n'`| `from_key` `field_key` `to_key`  | `'t'` / `'f'`        |
+| QUERY | `'q'`| `start_key` + steps              | `list` of records     |
+
+
+### GET
+
+Retrieve a record by key.
+
+**Request:** `'g'` + `type_key` field  
+**Response:** The full record bytes, or a single `\0` if not found.
+
+
+### PUT
+
+Store a new record. The record must contain a `type_key` field as its first
+data field. The key is extracted and used as the lookup key.
+
+**Request:** `'p'` + full record  
+**Response:** `'t'` on success, `'f'` on failure.
+
+
+### UPDATE
+
+Replace an existing record. Fails if the key does not already exist.
+
+**Request:** `'u'` + full record (with same key)  
+**Response:** `'t'` on success, `'f'` on failure.
+
+
+### DELETE
+
+Remove a record by key.
+
+**Request:** `'d'` + `type_key` field  
+**Response:** `'t'` on success, `'f'` if key not found.
+
+
+### LINK
+
+Create a named link from one record to another. Both records must already
+exist.
+
+**Request:** `'l'` + three `type_key` fields: `from`, `field_name`, `to`  
+**Response:** `'t'` on success, `'f'` on failure.
+
+
+### UNLINK
+
+Remove a named link from a record.
+
+**Request:** `'n'` + three `type_key` fields: `from`, `field_name`, `to`  
+**Response:** `'t'` on success, `'f'` on failure.
+
+
+### QUERY (graph traversal)
+
+Traverse the graph starting at a given key by following links that match
+a field name and optional value filter. Each step narrows the result set
+to the targets of matching links.
+
+**Request:** `'q'` + `start_key` + one or more steps  
+Each step: `type_key(field_name)` + `type_string(value_pattern)`  
+Use `"*"` as value_pattern for a wildcard (match all targets).
+
+**Response:** A `type_list` result:
+```
++-----+-------+----------+----------+-----+
+| 'l' | count | record₁  | record₂  | ... |
++-----+-------+----------+----------+-----+
+```
+
+**Example:** Find all friends of Peter:
+```
+key: "Peter"
+step: field="friend", value="*"
+```
+Wire bytes:
+```
+'q'  'k' 5 "Peter"  'k' 6 "friend"  's' 1 "*"
+```
+Returns a list of all records that Peter links to via "friend".
+
+Multi-hop traversal is supported by chaining steps. For example, finding
+friends-of-friends:
+```
+'q'  'k' 5 "Peter"  'k' 6 "friend"  's' 1 "*"  'k' 6 "friend"  's' 1 "*"
 ```
 
 
-### booleans and zero
+## Persistence
 
-Booleans and zero take just one byte, the type: 0:false, 1: true and 2:zero.
+### data.bin
+
+The raw `mem[]` arena written to disk. On startup, if `data.bin` exists,
+its contents are read directly into `mem[]`. On every write operation, the
+modified region is flushed to the corresponding offset in the file.
+
+### index.bin
+
+A text file with one line per key:
 ```
-                             bytes
-0      1       2       3       4       5       6       7       8    ...
-+------+-------+-------+-------+-------+-------+-------+-------+---
-| type |
-+------+-------+-------+-------+-------+-------+-------+-------+---
+<position> <key>
 ```
 
-
-# System design
-
-This program receives a stream of instructions on objects
-and the goal is to execute the commands in the filesystem.
+On startup, each line is parsed and the key is registered in the in-memory
+trie at the recorded position. The index file is append-only during operation.
 
 
-```
-───►   key X              x
-       field f            ┌──────────┐
-       set = 10           │type map  │
-                          │field next│
-                          │ type ptr │
-                          │ key y    │
-       key x              └──────────┘
-       field next         y
-       go                 ┌──────────┐
-       set ver = 2        │ver = 2   │
-                          │          │
-          │               │          │
-          │               │          │
-          │               └──────────┘
-          └───────►       z             za            ab
-                          ┌──────────┐  ┌──────────┐  ┌──────────┐
-   Instructions are       │          │  │          │  │          │
-   parsed and executed    │          │  │          │  │          │
-                          │          │  │          │  │          │
-                          │          │  │          │  │          │
-                          └──────────┘  └──────────┘  └──────────┘
-                          a             as            at
-                          ┌──────────┐  ┌──────────┐  ┌──────────┐
-                          │          │  │          │  │          │
-                          │          │  │          │  │          │
-                          │          │  │          │  │          │
-                          │          │  │          │  │          │
-                          └──────────┘  └──────────┘  └──────────┘
-```
+## Index (trie)
+
+The in-memory index is a character-level trie. Each node stores a single
+character, a position (or -1 if not a terminal), and an array of child
+pointers. Lookup, insertion, and deletion are all O(key_length).
+
+
+## Memory allocator
+
+The arena allocator manages `mem[]` using a linked list of free blocks.
+`getpos(size)` finds the first block large enough, carves out `size` bytes,
+and returns the starting position. `freepos(pos, size)` returns a region
+to the free list, merging with adjacent blocks when possible.

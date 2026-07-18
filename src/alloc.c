@@ -9,13 +9,14 @@ int getpos(int size) {
 	struct freenode *ptr = freelist;
 	if (ptr->size >= size) {
 		DEBUG("space available\n");
+		int result = ptr->pos;
 		ptr->size -= size;
 		ptr->pos += size;
 		if (ptr->size == 0) {
 			freelist = ptr->next;
 			free(ptr);
 		}
-		return ptr->pos - size;
+		return result;
 	}
 
 	struct freenode *prev;
@@ -23,13 +24,14 @@ int getpos(int size) {
 		prev = ptr;
 		ptr = ptr->next;
 		if (ptr->size >= size) {
+			int result = ptr->pos;
 			ptr->size -= size;
 			ptr->pos += size;
 			if (ptr->size == 0) {
 				prev->next = ptr->next;
 				free(ptr);
 			}
-			return ptr->pos - size;
+			return result;
 		}
 	}
 	return -1;
@@ -59,51 +61,61 @@ int getpos(int size) {
 int freepos(int pos, int size) {
 	struct freenode *ptr = freelist;
 
-	/* case D */
+	/* case D: freed block at position 0 */
 	if (pos == 0) {
-		if (ptr->pos > pos + size) {
-			DEBUG("case D1\n");
-			struct freenode *next = malloc(sizeof(struct freenode));
-			next->pos = ptr->pos;
-			next->size = ptr->size;
-			next->next = ptr;
-			freelist->next = next;
-			freelist->pos = 0;
-			freelist->size = size;
-		} else if (ptr->pos == size) {
+		if (ptr->pos == size) {
+			/* adjacent: just extend the existing free node backward */
 			DEBUG("case D2\n");
 			ptr->pos = 0;
 			ptr->size += size;
+		} else if (ptr->pos > size) {
+			/* gap: insert a new node at the front */
+			DEBUG("case D1\n");
+			struct freenode *new = malloc(sizeof(struct freenode));
+			new->pos = 0;
+			new->size = size;
+			new->next = freelist;
+			freelist = new;
 		}
 		return 0;
 	}
-free:
-	/* case A */
-	if (ptr->pos + ptr->size == pos) {
-		DEBUG("case A\n");
-		ptr->size += size;
-		return pos;
-	}
+	while (ptr) {
+		/* case A: freed block is right after this free node */
+		if (ptr->pos + ptr->size == pos) {
+			DEBUG("case A\n");
+			ptr->size += size;
+			/* also merge with next node if now adjacent */
+			if (ptr->next && ptr->pos + ptr->size == ptr->next->pos) {
+				struct freenode *old = ptr->next;
+				ptr->size += old->size;
+				ptr->next = old->next;
+				free(old);
+			}
+			return pos;
+		}
 
-	/* case B */
-	if (ptr->pos == pos + size) {
-		DEBUG("case B\n");
-		ptr->next->pos -= size;
-		ptr->next->size += size;
-		return pos + size;
-	}
+		/* case B: freed block is right before this free node */
+		if (pos + size == ptr->pos) {
+			DEBUG("case B\n");
+			ptr->pos = pos;
+			ptr->size += size;
+			return pos;
+		}
 
-	if (ptr->next) {
+		/* insert before next if the gap is between ptr and ptr->next */
+		if (!ptr->next || ptr->next->pos > pos) {
+			DEBUG("case D\n");
+			struct freenode *new = malloc(sizeof(struct freenode));
+			new->pos = pos;
+			new->size = size;
+			new->next = ptr->next;
+			ptr->next = new;
+			return pos;
+		}
+
 		ptr = ptr->next;
-		goto free;
 	}
 
-	/* case D */
-	DEBUG("case D\n");
-	ptr->next = malloc(sizeof(struct freenode));
-	ptr->next->pos = pos;
-	ptr->next->size = size;
-	ptr->next->next = NULL;
-
-	return pos;
+	/* should not reach here if freelist is valid */
+	return -1;
 }

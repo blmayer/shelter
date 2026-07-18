@@ -29,7 +29,10 @@ enum operation {
 	op_get = 'g', 
 	op_put = 'p', 
 	op_update = 'u', 
-	op_del = 'd'
+	op_del = 'd',
+	op_link = 'l',
+	op_unlink = 'n',
+	op_query = 'q'
 };
 
 struct freenode {

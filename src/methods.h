@@ -1,37 +1,30 @@
-/*
- *  This is the function that sends the file requested in a response, it takes
- *  two arguments: the client's connection and the file requested in the GET
- *  message.
- */
-
 #ifndef METHODS_H
 #define METHODS_H
 
 #include <stddef.h>
 #include "defs.h"
 
+/* Key operations */
 unsigned char *fetchkey(char *key);
-
 int putkey(unsigned char *rec);
+int updatekey(unsigned char *rec);
+int delkey(char *key);
 
-int linkobjs(char* from, char *field, char *to);
+/* Link operations */
+int linkobjs(char *from, char *field, char *to);
+int unlinkobjs(char *from, char *field, char *to);
 
-char getop(unsigned char *rec);
+/* Query (graph traversal) — returns a heap-allocated result buffer */
+unsigned char *query(unsigned char *msg, int *outlen);
 
-size_t getlensize(unsigned char *rec);
+/* Wire-payload helpers (payload is the message after the op byte) */
+unsigned char *get_from_payload(unsigned char *payload);
+int del_from_payload(unsigned char *payload);
+int link_from_payload(unsigned char *payload);
+int unlink_from_payload(unsigned char *payload);
 
-size_t datalen(unsigned char *rec);
-
-size_t reclen(unsigned char *rec);
-
-size_t getlen(unsigned char *rec);
-
-size_t keylen(unsigned char *rec);
-
+/* Index persistence */
 int writeindex(char key[MAX_KEY_SIZE], int pos);
-
-unsigned char *next(unsigned char *rec);
-
-unsigned char *data(unsigned char *rec);
+int loadindex(void);
 
 #endif

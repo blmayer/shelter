@@ -1,5 +1,6 @@
 #include "defs.h"
 #include "handler.h"
+#include "methods.h"
 #include "map.h"
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -42,23 +43,23 @@ int main(void) {
 	freelist->size = DB_SIZE;
 
 	{
-		int f = stat(DB_FILE, NULL);
-		if (f < 0) {
+		struct stat st;
+		if (stat(DB_FILE, &st) < 0) {
 			dbfile = open(DB_FILE, O_RDWR | O_CREAT, 0777);
 			write(dbfile, mem, DB_SIZE);
 		} else {
 			dbfile = open(DB_FILE, O_RDWR);
-			read(dbfile, &mem, 100 * 1024 * 1024);
+			read(dbfile, &mem, DB_SIZE);
 		}
 		if (dbfile < 0) {
 			return -1;
 		}
 
-		f = stat(IDX_FILE, NULL);
-		if (f < 0) {
-			idxfile = open(DB_FILE, O_RDWR | O_CREAT, 0777);
+		if (stat(IDX_FILE, &st) < 0) {
+			idxfile = open(IDX_FILE, O_RDWR | O_CREAT, 0777);
 		} else {
-			idxfile = open(DB_FILE, O_RDWR);
+			idxfile = open(IDX_FILE, O_RDWR);
+			loadindex();
 		}
 		if (idxfile < 0) {
 			return -1;
