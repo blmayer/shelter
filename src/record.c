@@ -93,6 +93,10 @@ void printrec(unsigned char *rec) {
 	puts("");
 }
 
+/*
+ * Append a named link. Target is the key string (not arena pos/handle).
+ * See DESIGN.md "Link target identity" — do not change without updating that.
+ */
 unsigned char *addlink(unsigned char *fromrec, char *field, char *to) {
 	int from_len = datalen(fromrec) + 1;
 	/* link overhead: type_link(1) + linklen(4) + type_key(1) + fieldlen(4) + field + type_key(1) + tolen(4) + to */

@@ -33,7 +33,7 @@ variable to override. Set `DEBUG=1` to enable debug logging.
 
 Two data files are created in the working directory:
 - `data.bin` — the memory arena snapshot
-- `index.bin` — the key→position index (text, append-only)
+- `index.bin` — the key→position index (text; append-only at runtime, compacted on load)
 
 
 ## Operations
@@ -51,6 +51,10 @@ for the full wire format.
 | LINK      | `'l'` | Add a named link from one record to another |
 | UNLINK    | `'n'` | Remove a named link                         |
 | QUERY     | `'q'` | Graph traversal starting from a key         |
+
+Links store the **target key** (not an arena offset). Records can move in
+the arena on update; keys stay stable. See `DESIGN.md` → *Link target
+identity* if you're tempted to change this.
 
 ### Quick example with the client library
 

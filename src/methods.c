@@ -88,7 +88,25 @@ int writeindex(char key[MAX_KEY_SIZE], int pos) {
 	return !fclose(file);
 }
 
-int loadindex() {
+/* Rewrite index.bin with one line per live key (current map state). */
+int dumpindex(void) {
+	FILE *fp = fopen(IDX_FILE, "w");
+	if (!fp) {
+		return -1;
+	}
+
+	if (dumpmap(&addrs, fp) < 0) {
+		fclose(fp);
+		return -1;
+	}
+
+	if (fclose(fp) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
+int loadindex(void) {
 	FILE *fp = fopen(IDX_FILE, "r");
 	if (!fp) {
 		return -1;
@@ -101,7 +119,9 @@ int loadindex() {
 	}
 
 	fclose(fp);
-	return 0;
+
+	/* Index is append-only at runtime; compact to current state after load. */
+	return dumpindex();
 }
 
 int updatekey(unsigned char *rec) {

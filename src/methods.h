@@ -25,6 +25,7 @@ int unlink_from_payload(unsigned char *payload);
 
 /* Index persistence */
 int writeindex(char key[MAX_KEY_SIZE], int pos);
+int dumpindex(void);
 int loadindex(void);
 
 #endif

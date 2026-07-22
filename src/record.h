@@ -15,7 +15,8 @@ size_t datalen(unsigned char *data);
 
 size_t reclen(unsigned char *rec);
 
-unsigned char *addlink(unsigned char *from, char *field, char *addr);
+/* Links store the target by key string — see DESIGN.md "Link target identity". */
+unsigned char *addlink(unsigned char *from, char *field, char *to);
 
 unsigned char *rmlink(unsigned char *fromrec, char *field, char *to);
 

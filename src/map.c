@@ -9,6 +9,8 @@ int init(map *root) {
 		return 0;
 	}
 
+	root->letter = 0;
+	root->pos = -1;
 	root->next = NULL;
 
 	return 1;
@@ -97,4 +99,32 @@ int destroy(map *root) {
 	}
 
 	return count;
+}
+
+static void dump_walk(map *node, char *buf, int len, FILE *fp) {
+	if (node->pos >= 0) {
+		buf[len] = '\0';
+		fprintf(fp, "%d %s\n", node->pos, buf);
+	}
+
+	if (!node->next) {
+		return;
+	}
+
+	for (int i = 0; node->next[i]; i++) {
+		if (len + 1 >= MAX_KEY_SIZE) {
+			continue;
+		}
+		buf[len] = node->next[i]->letter;
+		dump_walk(node->next[i], buf, len + 1, fp);
+	}
+}
+
+int dumpmap(map *root, FILE *fp) {
+	char buf[MAX_KEY_SIZE];
+	if (!root || !fp) {
+		return -1;
+	}
+	dump_walk(root, buf, 0, fp);
+	return 0;
 }

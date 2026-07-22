@@ -121,7 +121,7 @@ Just the type byte, no data:
 
 ### Links
 
-A link connects the current record to another record by key. The link's
+A link connects the current record to another record **by key**. The link's
 data portion contains two sub-keys: the *field name* and the *target key*.
 
 ```
@@ -134,6 +134,34 @@ Example: a link with field "friend" pointing to key "Alice":
 ```
 'L' 16,0,0,0  'k' 6,0,0,0 "friend"  'k' 5,0,0,0 "Alice"
 ```
+
+On follow (query, etc.), the target key is resolved through the in-memory
+index (`key → arena position`) to locate the current record bytes.
+
+
+### Link target identity (decision — do not casually change)
+
+**Links store the target's key string, not an arena address and not a
+stable integer handle.**
+
+This is intentional. Update, link, and unlink may free a record's old arena
+slot and allocate a new one, so the byte offset of a record is not stable.
+Anything that embeds a raw `pos` in a link will dangle after the target
+moves (or worse, point at a later occupant of that slot).
+
+Alternatives that were considered and rejected for now:
+
+| Approach | Why not (for Shelter today) |
+|----------|-----------------------------|
+| **Arena address in the link** | Breaks when the target is reallocated; silent corruption risk. |
+| **Stable handles** (`key → handle → pos`) | Correct and compact, but needs a durable handle table, alloc/reuse (or generation) policy, and more put/update/delete bookkeeping. Worth revisiting only if link size or hop cost becomes a measured problem. |
+| **Reverse index + rewrite addresses on move** | Keeps pointer-sized links correct, but every move must patch all inbound edges; extra structure to maintain and persist. |
+| **Forwarding stubs at old positions** | Works until compact; freelist and GC become more complex. |
+
+**Prefer keys unless there is a concrete performance or size reason to pay
+for handles (or reverse edges).** If that day comes, change the format in
+one place, migrate on-disk data, and update this section — do not mix key
+targets and address targets in the same database.
 
 
 ## Operations
@@ -263,8 +291,12 @@ A text file with one line per key:
 <position> <key>
 ```
 
-On startup, each line is parsed and the key is registered in the in-memory
-trie at the recorded position. The index file is append-only during operation.
+During operation the index is **append-only** (each put/update appends a
+new line). On startup, every line is parsed into the in-memory trie; later
+lines for the same key overwrite earlier positions. After loading, the
+index file is **rewritten** from the trie so it only contains the current
+state (one line per live key), preventing unbounded growth from historical
+appends.
 
 
 ## Index (trie)

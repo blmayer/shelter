@@ -1,3 +1,5 @@
 src/*.o
 bin/
 data/
+data.bin
+index.bin
